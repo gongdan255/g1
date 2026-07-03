@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="纸页日记，一个温暖手账风的动态博客首页，适合个人随笔、旅行记录、读书笔记和生活碎片。"
+    />
+    <title>纸页日记 | 温暖手账风博客</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="paper-noise" aria-hidden="true"></div>
+    <div class="cursor-glow" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark">P</span>
+        <span>
+          <strong>纸页日记</strong>
+          <small>写给自己看的温柔记录</small>
+        </span>
+      </a>
+
+      <nav class="nav">
+        <a href="./posts.html">文章</a>
+        <a href="./post.html">详情</a>
+        <a href="./publish.html">发布</a>
+        <a href="./about.html">关于</a>
+      </nav>
+    </header>
+
+    <main id="top" class="page-shell">
+      <section class="hero reveal">
+        <div class="hero-copy">
+          <div class="hero-badge">
+            <span class="dot"></span>
+            <span id="todayText">今天</span>
+          </div>
+          <h1>把日子写成一页一页会呼吸的手账。</h1>
+          <p>
+            这里记录旅行时的风、读书时的灯、晚饭后的碎语，还有那些看起来很小、却值得被认真保存的瞬间。
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="./post.html?id=2026-07-03-sea-breeze-slow">翻开最新一页</a>
+            <a class="btn btn-secondary" href="./publish.html">去发布一篇</a>
+          </div>
+        </div>
+
+        <aside class="hero-note float-card">
+          <div class="note-tape note-tape-left"></div>
+          <div class="note-tape note-tape-right"></div>
+          <p class="note-label">今日心情</p>
+          <h2>慢一点，也没关系。</h2>
+          <p>
+            今天适合把咖啡喝完，把想法记下，把还没写完的故事留给晚上。
+          </p>
+          <div class="note-meta">
+            <span>☁️ 微风</span>
+            <span>📖 读书中</span>
+            <span>☕ 半杯拿铁</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="feature-grid reveal">
+        <article class="featured-card float-card">
+          <span class="sticker">置顶</span>
+          <div class="featured-image featured-image-1"></div>
+          <div class="card-body">
+            <p class="eyebrow">本周随笔</p>
+            <h3>在黄昏之前，把心事折成一张小纸条</h3>
+            <p>
+              周三傍晚我去楼下买牛奶，回来路上风很轻，树影落在地面像翻页时晃动的铅笔线。
+              我忽然觉得，最近很多焦虑其实都不算大事，只是太久没好好坐下来和自己说话。
+              于是我把桌子擦干净，重新打开台灯，像重新整理一小段生活。
+            </p>
+            <a href="./post.html?id=2026-07-03-sea-breeze-slow" class="text-link">阅读全文</a>
+          </div>
+        </article>
+
+        <aside class="sidebar-card">
+          <div class="sidebar-section">
+            <p class="eyebrow">手账栏</p>
+            <div class="memo-list">
+              <div class="memo-item">
+                <span>07.03</span>
+                <p>整理了去年夏天的照片，发现海边的颜色比记忆里更安静。</p>
+              </div>
+              <div class="memo-item">
+                <span>06.28</span>
+                <p>重读一本旧书，顺手在页边写了几句，像和过去的自己打了个招呼。</p>
+              </div>
+              <div class="memo-item">
+                <span>06.20</span>
+                <p>把窗边的小台灯换成了暖色，晚上坐下来的时候，心也跟着软了一点。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <p class="eyebrow">分类</p>
+            <div class="tag-cloud" id="categories">
+              <a href="./posts.html">旅行</a>
+              <a href="./posts.html">读书</a>
+              <a href="./posts.html">日常</a>
+              <a href="./posts.html">随笔</a>
+              <a href="./posts.html">摄影</a>
+              <a href="./posts.html">灵感</a>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section id="latest" class="section reveal">
+        <div class="section-heading">
+          <p class="eyebrow">最新文章</p>
+          <h2>像把便签贴在页面上，一张一张往下翻。</h2>
+        </div>
+
+        <div class="post-grid">
+          <article class="post-card float-card" data-tilt>
+            <div class="post-thumb thumb-1"></div>
+            <div class="post-content">
+              <div class="post-meta">
+                <span>旅行</span>
+                <time>2026-07-03</time>
+              </div>
+              <h3>在海边的风里，重新认识了慢</h3>
+              <p>海浪不是在催促，而是在一遍遍提醒：有些事本来就可以慢慢来。</p>
+            </div>
+          </article>
+
+          <article class="post-card float-card" data-tilt>
+            <div class="post-thumb thumb-2"></div>
+            <div class="post-content">
+              <div class="post-meta">
+                <span>读书</span>
+                <time>2026-06-29</time>
+              </div>
+              <h3>一盏台灯，一本旧书，和一晚安静</h3>
+              <p>读到某一页时，忽然会停下来，像有人从很远的地方轻轻碰了一下自己。</p>
+            </div>
+          </article>
+
+          <article class="post-card float-card" data-tilt>
+            <div class="post-thumb thumb-3"></div>
+            <div class="post-content">
+              <div class="post-meta">
+                <span>日常</span>
+                <time>2026-06-25</time>
+              </div>
+              <h3>把家里收拾成了适合长住的样子</h3>
+              <p>换了桌布、摆了花、擦亮玻璃，像是把生活重新摊平，再一点点折好。</p>
+            </div>
+          </article>
+
+          <article class="post-card float-card" data-tilt>
+            <div class="post-thumb thumb-4"></div>
+            <div class="post-content">
+              <div class="post-meta">
+                <span>随笔</span>
+                <time>2026-06-20</time>
+              </div>
+              <h3>我开始喜欢不那么用力的答案</h3>
+              <p>不是每个问题都要立刻解决，有些时候，先陪自己坐一会儿就已经很好。</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="section-actions">
+            <a class="btn btn-secondary" href="./posts.html">查看全部文章</a>
+          <a class="btn btn-primary" href="./publish.html">发布新文章</a>
+        </div>
+      </section>
+
+      <section id="memory" class="section reveal">
+        <div class="section-heading">
+          <p class="eyebrow">生活碎片</p>
+          <h2>把照片、票根、手写字和天气，都收进这一页。</h2>
+        </div>
+
+        <div class="scrapbook">
+          <figure class="photo-card rotate-left">
+            <div class="photo photo-1"></div>
+            <figcaption>午后窗台的光。</figcaption>
+          </figure>
+          <figure class="photo-card rotate-right">
+            <div class="photo photo-2"></div>
+            <figcaption>路边的花和一小段风。</figcaption>
+          </figure>
+          <figure class="photo-card rotate-left">
+            <div class="photo photo-3"></div>
+            <figcaption>刚买回来的旧书。</figcaption>
+          </figure>
+          <figure class="photo-card rotate-right">
+            <div class="photo photo-4"></div>
+            <figcaption>旅行结束前的最后一张照片。</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section reveal">
+        <div class="section-heading">
+          <p class="eyebrow">阅读路线</p>
+          <h2>像把目录写在角落，方便慢慢翻回去。</h2>
+        </div>
+
+        <div class="timeline">
+          <article class="timeline-item">
+            <span>01</span>
+            <div>
+              <h3>旅行</h3>
+              <p>记录出发、抵达、错过和意外的小惊喜。</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>02</span>
+            <div>
+              <h3>读书</h3>
+              <p>摘下让人停顿的句子，顺手写一点自己的回声。</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>03</span>
+            <div>
+              <h3>日常</h3>
+              <p>把平凡的日子认真收藏，留住能发光的细节。</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="about" class="section about reveal">
+        <div class="about-card float-card">
+          <p class="eyebrow">关于这里</p>
+          <h2>这是一个写给自己看的角落。</h2>
+          <p>
+            没有很重的商业感，也不追求炫技。它只想像一本摊开的手账，让人愿意坐下来，
+            慢慢翻，慢慢读，慢慢把自己的生活也记下来。
+          </p>
+          <a class="btn btn-primary" href="#top">回到顶部</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 2026 纸页日记 · 写给自己，也写给认真生活的人。</p>
+    </footer>
+
+    <script src="./blog-config.js"></script>
+    <script src="./blog-data.js"></script>
+    <script src="./backend.js"></script>
+    <script src="./script.js"></script>
+  </body>
+</html>

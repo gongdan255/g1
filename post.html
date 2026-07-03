@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="纸页日记文章详情页，记录一篇更完整的温暖手账风随笔。" />
+    <title>在海边的风里，重新认识了慢 | 纸页日记</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="paper-noise" aria-hidden="true"></div>
+    <div class="cursor-glow" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark">P</span>
+        <span>
+          <strong>纸页日记</strong>
+          <small>写给自己看的温柔记录</small>
+        </span>
+      </a>
+
+      <nav class="nav">
+        <a href="./index.html">首页</a>
+        <a href="./posts.html">文章</a>
+        <a href="./publish.html">发布</a>
+        <a href="./about.html">关于</a>
+      </nav>
+    </header>
+
+    <main class="page-shell article-page">
+      <article class="article-layout reveal">
+        <div class="article-hero float-card" id="articleHero">
+          <div class="article-breadcrumb">
+            <a href="./index.html">首页</a>
+            <span>/</span>
+            <a href="./posts.html">文章</a>
+            <span>/</span>
+            <span id="articleCategory">旅行</span>
+          </div>
+          <h1 id="articleTitle">在海边的风里，重新认识了慢</h1>
+          <p class="article-subtitle" id="articleSubtitle">
+            那天我没有赶行程，也没有计划拍很多照片，只是一直坐在海边，等潮水把脑子里那些急的东西一层层带走。
+          </p>
+          <div class="article-meta-row">
+            <span id="articleDate">2026-07-03</span>
+            <span id="articleReadTime">阅读 6 分钟</span>
+            <span id="articleTags">标签：旅行 / 随笔</span>
+          </div>
+        </div>
+
+        <div class="article-content float-card" id="articleContent">
+          <p>内容会从共享数据里自动渲染。你现在看到的是默认文章，之后点击发布页提交的新内容也会出现在这里。</p>
+        </div>
+
+        <aside class="article-sidebar">
+          <section class="sidebar-card">
+            <p class="eyebrow">本篇笔记</p>
+            <div class="memo-list">
+              <div class="memo-item">
+                <span>01</span>
+                <p>海边的风，让人不自觉把呼吸放慢。</p>
+              </div>
+              <div class="memo-item">
+                <span>02</span>
+                <p>不赶时间的时候，很多情绪会自己安静下来。</p>
+              </div>
+              <div class="memo-item">
+                <span>03</span>
+                <p>“慢一点”不是放弃，而是给自己留余地。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="sidebar-card">
+            <p class="eyebrow">相关文章</p>
+            <div id="relatedLinks"></div>
+          </section>
+        </aside>
+      </article>
+
+      <section class="section reveal">
+        <div class="section-heading">
+          <p class="eyebrow">评论区</p>
+          <h2>把想说的话也留在这页边角。</h2>
+        </div>
+        <div class="comment-card">
+          <div class="comment-avatar">你</div>
+          <form class="comment-form">
+            <input type="text" placeholder="写下你的感受，像留一张便签..." />
+            <button type="button" class="btn btn-primary">发送留言</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 2026 纸页日记 · 一篇会翻页的博客。</p>
+    </footer>
+
+    <script src="./blog-config.js"></script>
+    <script src="./blog-data.js"></script>
+    <script src="./backend.js"></script>
+    <script src="./script.js"></script>
+  </body>
+</html>

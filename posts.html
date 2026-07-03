@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="纸页日记文章列表页，浏览全部内容。" />
+    <title>文章列表 | 纸页日记</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="paper-noise" aria-hidden="true"></div>
+    <div class="cursor-glow" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark">P</span>
+        <span>
+          <strong>纸页日记</strong>
+          <small>写给自己看的温柔记录</small>
+        </span>
+      </a>
+
+      <nav class="nav">
+        <a href="./index.html">首页</a>
+        <a href="./post.html">详情</a>
+        <a href="./publish.html">发布</a>
+        <a href="./about.html">关于</a>
+      </nav>
+    </header>
+
+    <main class="page-shell">
+      <section class="section reveal">
+        <div class="section-heading">
+          <p class="eyebrow">文章列表</p>
+          <h2>把每一篇都按主题分好类，翻起来会更像一本整理过的手账。</h2>
+        </div>
+
+        <div class="posts-toolbar">
+          <div class="tag-cloud" id="categoryFilters"></div>
+          <p class="muted">按「旅行 / 读书 / 日常 / 随笔 / 回忆 / 夜晚 / 灵感」整理</p>
+        </div>
+
+        <div class="posts-catalog" id="postsCatalog"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 2026 纸页日记</p>
+    </footer>
+
+    <script src="./blog-config.js"></script>
+    <script src="./blog-data.js"></script>
+    <script src="./backend.js"></script>
+    <script src="./script.js"></script>
+  </body>
+</html>
