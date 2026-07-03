@@ -226,7 +226,7 @@ const renderPostDetail = () => {
 
   if (!post) return;
 
-  document.title = `${post.title} | 纸页日记`;
+  document.title = `${post.title} | 我的博客`;
   articleHero.style.background = `
     linear-gradient(180deg, rgba(255, 248, 240, 0.9), rgba(255, 248, 240, 0.9)),
     url("${post.cover || defaultCover}")
