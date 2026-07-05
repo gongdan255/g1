@@ -479,17 +479,7 @@ const parsePhotos = (value) =>
     })
     .filter((photo) => photo.src);
 
-const readFileAsDataUrl = (file) =>
-  new Promise((resolve, reject) => {
-    if (!file) {
-      resolve("");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+const makePreviewUrl = (file) => (file ? URL.createObjectURL(file) : "");
 
 const getBodyByType = (formData, type) => {
   if (type === "post") return parseLines(formData.get("bodyPost"));
@@ -504,7 +494,8 @@ const wirePublish = () => {
   const localAlbumInput = $("#albumFiles");
   const coverPreview = $("#coverPreview");
   const albumPreview = $("#albumPreview");
-  let localCoverDataUrl = "";
+  let localCoverFile = null;
+  let localCoverPreviewUrl = "";
   let localAlbumPhotos = [];
 
   if (!form) return;
@@ -514,7 +505,7 @@ const wirePublish = () => {
   };
 
   const updateCoverPreview = () => {
-    const url = localCoverDataUrl || String(form.elements.cover?.value || "").trim();
+    const url = localCoverPreviewUrl || String(form.elements.cover?.value || "").trim();
     coverPreview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="封面预览" />` : `<span>封面预览</span>`;
   };
 
@@ -526,7 +517,7 @@ const wirePublish = () => {
           .map(
             (photo) => `
               <figure>
-                <img src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.caption || "相册图片")}" />
+                <img src="${escapeHtml(photo.previewUrl || photo.src)}" alt="${escapeHtml(photo.caption || "相册图片")}" />
                 <figcaption>${escapeHtml(photo.caption || "本地图片")}</figcaption>
               </figure>
             `
@@ -542,19 +533,23 @@ const wirePublish = () => {
   updateCoverPreview();
   updateAlbumPreview();
 
-  localCoverInput?.addEventListener("change", async () => {
-    localCoverDataUrl = await readFileAsDataUrl(localCoverInput.files?.[0]);
+  localCoverInput?.addEventListener("change", () => {
+    if (localCoverPreviewUrl) URL.revokeObjectURL(localCoverPreviewUrl);
+    localCoverFile = localCoverInput.files?.[0] || null;
+    localCoverPreviewUrl = makePreviewUrl(localCoverFile);
     updateCoverPreview();
   });
 
-  localAlbumInput?.addEventListener("change", async () => {
+  localAlbumInput?.addEventListener("change", () => {
+    localAlbumPhotos.forEach((photo) => {
+      if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl);
+    });
     const files = [...(localAlbumInput.files || [])].slice(0, 5);
-    localAlbumPhotos = await Promise.all(
-      files.map(async (file, index) => ({
-        src: await readFileAsDataUrl(file),
+    localAlbumPhotos = files.map((file, index) => ({
+        src: file,
+        previewUrl: makePreviewUrl(file),
         caption: `本地照片 ${index + 1}`,
-      }))
-    );
+      }));
     updateAlbumPreview();
   });
 
@@ -601,7 +596,7 @@ const wirePublish = () => {
       category: type === "post" ? String(formData.get("category") || "随笔").trim() : "",
       tags: parseTags(formData.get("tags")),
       summary: String(formData.get("summary") || "").trim(),
-      cover: localCoverDataUrl || String(formData.get("cover") || "").trim(),
+      cover: localCoverFile || String(formData.get("cover") || "").trim(),
       littleThings: parseLines(formData.get("littleThings")),
       photos,
       body: getBodyByType(formData, type),

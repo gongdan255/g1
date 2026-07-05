@@ -98,6 +98,7 @@ window.JournalBackend = (() => {
   const maybeUploadAsset = async (value, folder) => {
     if (!value) return "";
     if (!isSupabase()) return value;
+    if (value instanceof Blob) return uploadBlob(value, folder);
     if (/^https?:\/\//i.test(value)) return value;
     if (!/^data:image\//i.test(value)) return value;
 
