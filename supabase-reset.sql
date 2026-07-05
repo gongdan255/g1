@@ -6,10 +6,12 @@ create extension if not exists pgcrypto;
 
 drop policy if exists "Public read journal entries" on public.journal_entries;
 drop policy if exists "Public insert journal entries" on public.journal_entries;
+drop policy if exists "Public delete journal entries" on public.journal_entries;
 drop table if exists public.journal_entries;
 
 drop policy if exists "Public read blog images" on storage.objects;
 drop policy if exists "Public upload blog images" on storage.objects;
+drop policy if exists "Public delete blog images" on storage.objects;
 
 insert into storage.buckets (id, name, public)
 values ('blog-images', 'blog-images', true)
@@ -46,6 +48,11 @@ create policy "Public insert journal entries"
   for insert
   with check (true);
 
+create policy "Public delete journal entries"
+  on public.journal_entries
+  for delete
+  using (true);
+
 create policy "Public read blog images"
   on storage.objects
   for select
@@ -55,3 +62,8 @@ create policy "Public upload blog images"
   on storage.objects
   for insert
   with check (bucket_id = 'blog-images');
+
+create policy "Public delete blog images"
+  on storage.objects
+  for delete
+  using (bucket_id = 'blog-images');

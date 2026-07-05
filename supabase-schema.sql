@@ -55,11 +55,37 @@ do $$
 begin
   if not exists (
     select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'journal_entries' and policyname = 'Public delete journal entries'
+  ) then
+    create policy "Public delete journal entries"
+      on public.journal_entries
+      for delete
+      using (true);
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
     where schemaname = 'storage' and tablename = 'objects' and policyname = 'Public read blog images'
   ) then
     create policy "Public read blog images"
       on storage.objects
       for select
+      using (bucket_id = 'blog-images');
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'Public delete blog images'
+  ) then
+    create policy "Public delete blog images"
+      on storage.objects
+      for delete
       using (bucket_id = 'blog-images');
   end if;
 end $$;

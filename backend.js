@@ -62,15 +62,25 @@ window.JournalBackend = (() => {
     const extension = (blob.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "") || "png";
     const path = `${folder}/${crypto.randomUUID()}.${extension}`;
 
-    const { error } = await client.storage.from(bucket).upload(path, blob, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: blob.type || "image/png",
-    });
+    let error = null;
+    try {
+      const result = await client.storage.from(bucket).upload(path, blob, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: blob.type || "image/png",
+      });
+      error = result.error;
+    } catch (uploadError) {
+      error = uploadError;
+    }
 
     if (error) {
+      const message =
+        error instanceof TypeError && /fetch/i.test(error.message || "")
+          ? "网络上传被浏览器拦截或中断。手机端请优先用 Edge / Chrome / Safari 打开，并避免在微信内置浏览器上传超大原图。"
+          : error.message || "未知错误";
       throw new Error(
-        `媒体上传失败：${error.message || "未知错误"}。请确认存储桶 ${bucket} 已创建并允许匿名上传。`
+        `媒体上传失败：${message} 请确认存储桶 ${bucket} 已创建并允许匿名上传。`
       );
     }
 
@@ -117,6 +127,24 @@ window.JournalBackend = (() => {
       });
     }
     return uploaded;
+  };
+
+  const publicUrlToStoragePath = (url) => {
+    const bucket = config.supabaseBucket || "blog-images";
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const index = String(url || "").indexOf(marker);
+    if (index === -1) return "";
+    return decodeURIComponent(String(url).slice(index + marker.length).split("?")[0]);
+  };
+
+  const cleanupEntryAssets = async (client, entry) => {
+    const bucket = config.supabaseBucket || "blog-images";
+    const paths = [
+      publicUrlToStoragePath(entry?.cover),
+      ...toArray(entry?.photos).map((photo) => publicUrlToStoragePath(photo?.src)),
+    ].filter(Boolean);
+    if (!paths.length) return;
+    await client.storage.from(bucket).remove([...new Set(paths)]);
   };
 
   const listEntries = async () => {
@@ -181,10 +209,24 @@ window.JournalBackend = (() => {
     return normalizeEntry(data);
   };
 
+  const deleteEntry = async (id) => {
+    if (isLocal()) return false;
+    const client = await ensureSupabase();
+    const table = config.supabaseTable || "journal_entries";
+    const { data: existing } = await client.from(table).select("cover, photos").eq("id", id).maybeSingle();
+    await cleanupEntryAssets(client, existing);
+    const { error } = await client.from(table).delete().eq("id", id);
+    if (error) {
+      throw error;
+    }
+    return true;
+  };
+
   return {
     isLocal,
     isSupabase,
     listEntries,
     createEntry,
+    deleteEntry,
   };
 })();

@@ -79,7 +79,7 @@ const actionBarHtml = (entry) => `
       entry.type === "diary" ? "./diary.html" : entry.type === "album" ? "./albums.html" : "./posts.html"
     }">返回列表</a>
     ${
-      entry.source === "local"
+      entry.source === "local" || entry.source === "remote"
         ? `<button class="btn btn-danger" type="button" data-delete-entry="${escapeHtml(entry.id)}">删除这条${
             typeLabel[entry.type] || "记录"
           }</button>`
@@ -171,16 +171,29 @@ const makeFilters = (container, values, onChange) => {
 };
 
 const wireDeleteButtons = () => {
-  document.addEventListener("click", (event) => {
+  document.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-delete-entry]");
     if (!button) return;
     const entry = findEntry(button.dataset.deleteEntry);
-    if (!entry || entry.source !== "local") return;
-    const ok = window.confirm(`确定要删除《${entry.title}》吗？`);
+    if (!entry || (entry.source !== "local" && entry.source !== "remote")) return;
+    const ok = window.confirm(`确定要删除《${entry.title}》吗？删除后公开页面也看不到它了。`);
     if (!ok) return;
-    data.deleteEntry(entry.id);
-    currentEntries = mergeEntries(currentEntries.filter((item) => item.id !== entry.id));
-    window.location.href = entry.type === "album" ? "./albums.html" : entry.type === "diary" ? "./diary.html" : "./posts.html";
+    button.disabled = true;
+    button.textContent = "正在删除...";
+    try {
+      if (entry.source === "remote" && backend?.isSupabase?.()) {
+        await backend.deleteEntry(entry.id);
+      } else {
+        data.deleteEntry(entry.id);
+      }
+      currentEntries = mergeEntries(currentEntries.filter((item) => item.id !== entry.id));
+      window.location.href = entry.type === "album" ? "./albums.html" : entry.type === "diary" ? "./diary.html" : "./posts.html";
+    } catch (error) {
+      console.error(error);
+      button.disabled = false;
+      button.textContent = `删除这条${typeLabel[entry.type] || "记录"}`;
+      window.alert(`删除失败：${error?.message || "请检查 Supabase 删除权限。"}`);
+    }
   });
 };
 
@@ -480,6 +493,37 @@ const parsePhotos = (value) =>
     .filter((photo) => photo.src);
 
 const makePreviewUrl = (file) => (file ? URL.createObjectURL(file) : "");
+const compressImageFile = (file, maxSize = 1600, quality = 0.82) =>
+  new Promise((resolve) => {
+    if (!file || !/^image\//i.test(file.type) || /svg|gif/i.test(file.type)) {
+      resolve(file);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      const ratio = Math.min(1, maxSize / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
+      const width = Math.max(1, Math.round((image.naturalWidth || 1) * ratio));
+      const height = Math.max(1, Math.round((image.naturalHeight || 1) * ratio));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => resolve(blob || file),
+        file.type === "image/png" ? "image/png" : "image/jpeg",
+        quality
+      );
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    image.src = url;
+  });
 
 const getBodyByType = (formData, type) => {
   if (type === "post") return parseLines(formData.get("bodyPost"));
@@ -494,6 +538,7 @@ const wirePublish = () => {
   const localAlbumInput = $("#albumFiles");
   const coverPreview = $("#coverPreview");
   const albumPreview = $("#albumPreview");
+  const submitButton = form?.querySelector('button[type="submit"]');
   let localCoverFile = null;
   let localCoverPreviewUrl = "";
   let localAlbumPhotos = [];
@@ -533,23 +578,25 @@ const wirePublish = () => {
   updateCoverPreview();
   updateAlbumPreview();
 
-  localCoverInput?.addEventListener("change", () => {
+  localCoverInput?.addEventListener("change", async () => {
     if (localCoverPreviewUrl) URL.revokeObjectURL(localCoverPreviewUrl);
-    localCoverFile = localCoverInput.files?.[0] || null;
+    localCoverFile = await compressImageFile(localCoverInput.files?.[0] || null);
     localCoverPreviewUrl = makePreviewUrl(localCoverFile);
     updateCoverPreview();
   });
 
-  localAlbumInput?.addEventListener("change", () => {
+  localAlbumInput?.addEventListener("change", async () => {
     localAlbumPhotos.forEach((photo) => {
       if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl);
     });
     const files = [...(localAlbumInput.files || [])].slice(0, 5);
-    localAlbumPhotos = files.map((file, index) => ({
-        src: file,
-        previewUrl: makePreviewUrl(file),
-        caption: `本地照片 ${index + 1}`,
-      }));
+    albumPreview.innerHTML = `<span>正在整理图片，手机原图会自动压缩后再上传...</span>`;
+    const compressedFiles = await Promise.all(files.map((file) => compressImageFile(file)));
+    localAlbumPhotos = compressedFiles.map((file, index) => ({
+      src: file,
+      previewUrl: makePreviewUrl(file),
+      caption: `本地照片 ${index + 1}`,
+    }));
     updateAlbumPreview();
   });
 
@@ -615,6 +662,10 @@ const wirePublish = () => {
     }
 
     try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "正在发布...";
+      }
       const created =
         backend?.isSupabase?.() ? await backend.createEntry(payload) : data.createEntry(payload);
 
@@ -628,6 +679,11 @@ const wirePublish = () => {
     } catch (error) {
       console.error(error);
       window.alert(`发布失败：${error?.message || "请检查后端配置。"}`);
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "发布记录";
+      }
     }
   });
 };
