@@ -78,14 +78,30 @@ window.JournalBackend = (() => {
     return data?.publicUrl || "";
   };
 
+  const dataUrlToBlob = (value) => {
+    const matched = String(value || "").match(/^data:(.+?);base64,(.+)$/);
+    if (!matched) {
+      throw new Error("图片数据格式不正确，暂时无法上传。");
+    }
+
+    const [, mimeType, base64] = matched;
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+
+    return new Blob([bytes], { type: mimeType });
+  };
+
   const maybeUploadAsset = async (value, folder) => {
     if (!value) return "";
     if (!isSupabase()) return value;
     if (/^https?:\/\//i.test(value)) return value;
     if (!/^data:image\//i.test(value)) return value;
 
-    const response = await fetch(value);
-    const blob = await response.blob();
+    const blob = dataUrlToBlob(value);
     return uploadBlob(blob, folder);
   };
 
