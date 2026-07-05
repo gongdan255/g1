@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="浏览全部长文章，支持分类和标签筛选。" />
-    <title>文章 | 慢慢记</title>
+    <meta name="description" content="按日期、心情、天气整理每日手账日记。" />
+    <title>日记 | 慢慢记</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body data-page="posts">
+  <body data-page="diary">
     <div class="paper-noise" aria-hidden="true"></div>
     <header class="topbar">
       <a class="brand" href="./index.html"><span class="brand-mark">慢</span><span><strong>慢慢记</strong><small>日记、文章、相册和月度回顾</small></span></a>
@@ -21,12 +21,16 @@
       <a class="write-button" href="./publish.html">+ 记录</a>
     </header>
     <main class="page-shell">
-      <section class="page-title reveal"><p class="eyebrow">Articles</p><h1>文章</h1><p>旅行、读书、随笔和那些适合慢慢展开的长记录。</p></section>
-      <section class="toolbar panel reveal">
-        <input id="postSearch" type="search" placeholder="搜索标题、摘要或标签" />
-        <div class="chip-row" id="postFilters"></div>
+      <section class="page-title reveal">
+        <p class="eyebrow">Diary</p>
+        <h1>日记</h1>
+        <p>用心情、天气和今日小事，把普通的一天保存下来。</p>
       </section>
-      <section class="card-grid reveal" id="postList"></section>
+      <section class="toolbar panel reveal">
+        <input id="diarySearch" type="search" placeholder="搜索日记、地点或标签" />
+        <div class="chip-row" id="diaryFilters"></div>
+      </section>
+      <section class="timeline-list reveal" id="diaryList"></section>
     </main>
     <footer class="footer"><p>© 2026 慢慢记</p></footer>
     <script src="./blog-config.js"></script>

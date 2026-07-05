@@ -3,115 +3,66 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="我的博客关于我页面，介绍这个温暖手账风博客背后的故事。" />
-    <title>关于我 | 我的博客</title>
+    <meta name="description" content="关于慢慢记，这个给日常留一盏灯的地方。" />
+    <title>关于 | 慢慢记</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body>
+  <body data-page="about">
     <div class="paper-noise" aria-hidden="true"></div>
-    <div class="cursor-glow" aria-hidden="true"></div>
-
     <header class="topbar">
-      <a class="brand" href="./index.html">
-        <span class="brand-mark">M</span>
-        <span>
-          <strong>我的博客</strong>
-          <small>写给自己看的温柔记录</small>
-        </span>
-      </a>
-
-      <nav class="nav">
-        <a href="./index.html">首页</a>
-        <a href="./posts.html">文章</a>
-        <a href="./post.html">详情</a>
-        <a href="./publish.html">发布</a>
+      <a class="brand" href="./index.html"><span class="brand-mark">慢</span><span><strong>慢慢记</strong><small>日记、文章、相册和月度回顾</small></span></a>
+      <nav class="nav" aria-label="主导航">
+        <a href="./index.html" data-nav="home">首页</a><a href="./diary.html" data-nav="diary">日记</a><a href="./posts.html" data-nav="posts">文章</a><a href="./albums.html" data-nav="albums">相册</a><a href="./calendar.html" data-nav="calendar">日历</a><a href="./review.html" data-nav="review">回顾</a><a href="./about.html" data-nav="about">关于</a>
       </nav>
+      <a class="write-button" href="./publish.html">+ 记录</a>
     </header>
 
-    <main class="page-shell about-page">
-      <section class="about-hero reveal">
-        <div class="section-heading">
-          <p class="eyebrow">关于我</p>
-          <h2>我喜欢把生活写得慢一点、软一点，也亮一点。</h2>
+    <main class="page-shell wide-shell">
+      <section class="about-warm reveal">
+        <div class="page-title">
+          <p class="eyebrow">About</p>
+          <h1>愿每个普通日子，都有地方安放。</h1>
+          <p>
+            慢慢记不是为了把生活写得多漂亮，它只是想给那些很小、很轻、差点被忘掉的瞬间留一个位置。
+          </p>
         </div>
-        <div class="about-hero-card float-card">
-          <div class="about-portrait"></div>
-          <div>
-            <p>
-              这个博客最开始只是一个想法：我想有一个地方，不需要很完整，也不需要很热闹，
-              只要能记录下那些容易被忽略的小事就够了。
-            </p>
-            <p>
-              我喜欢写旅行、读书、家里的光、下雨的声音，还有那些说不上来但一直在心里的瞬间。
-              我不太擅长把日子过得轰轰烈烈，但很擅长把平凡过得有一点温度。
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section reveal">
-        <div class="section-heading">
-          <p class="eyebrow">我相信</p>
-          <h2>好看的博客不只是在展示内容，也在展示一个人的气味。</h2>
-        </div>
-
-        <div class="belief-grid">
-          <article class="belief-card">
-            <h3>写作像整理桌面</h3>
-            <p>把乱掉的情绪摆整齐，把散掉的念头收回来，字写着写着，心也会跟着安静一点。</p>
-          </article>
-          <article class="belief-card">
-            <h3>慢是一个选择</h3>
-            <p>我喜欢不那么用力地表达，不那么着急地得出结论，让内容自己慢慢长出来。</p>
-          </article>
-          <article class="belief-card">
-            <h3>留白很重要</h3>
-            <p>页面里留白，生活里也留白。人只有先空出一点位置，才装得下更温柔的东西。</p>
-          </article>
+        <div class="panel about-letter">
+          <p>
+            有些日子没有大事发生，只是早晨的光落在桌角，雨停前买了一杯热牛奶，或者在回家的路上忽然想明白了一点点事。
+          </p>
+          <p>
+            这些片刻很容易过去。可如果愿意把它们写下来、拍下来、慢慢整理起来，生活就会像一本被认真翻过的手账，留下温度，也留下自己的痕迹。
+          </p>
+          <p>
+            这里可以写长文章，也可以只写三行日记；可以放一组照片，也可以在月底回头看看：原来这个月，我也好好走过来了。
+          </p>
         </div>
       </section>
 
-      <section class="section reveal">
-        <div class="section-heading">
-          <p class="eyebrow">最近在做</p>
-          <h2>把博客做成像手账一样能一直更新的地方。</h2>
-        </div>
-        <div class="timeline">
-          <article class="timeline-item">
-            <span>01</span>
-            <div>
-              <h3>整理旧照片</h3>
-              <p>把一些被遗忘的旅行片段重新翻出来，像重新见了一次过去的自己。</p>
-            </div>
-          </article>
-          <article class="timeline-item">
-            <span>02</span>
-            <div>
-              <h3>写新的随笔</h3>
-              <p>试着把最近的日常写得更诚实一点，也更轻一点。</p>
-            </div>
-          </article>
-          <article class="timeline-item">
-            <span>03</span>
-            <div>
-              <h3>让博客继续长大</h3>
-              <p>继续补页面、补功能、补一些很小但很有温度的细节。</p>
-            </div>
-          </article>
-        </div>
+      <section class="about-values reveal">
+        <article class="panel value-card">
+          <span>01</span>
+          <h2>慢一点也没关系</h2>
+          <p>不是每个答案都要立刻出现。很多感受，适合先被放在纸上，等它自己慢慢清楚。</p>
+        </article>
+        <article class="panel value-card">
+          <span>02</span>
+          <h2>小事也值得记录</h2>
+          <p>一盏灯、一阵风、一张照片、一句没说出口的话，都可能是某一天最柔软的证据。</p>
+        </article>
+        <article class="panel value-card">
+          <span>03</span>
+          <h2>把自己照顾回来</h2>
+          <p>写作和整理不是任务，它们更像把散开的心情轻轻收拢，让自己重新坐回生活里。</p>
+        </article>
       </section>
     </main>
 
-    <footer class="footer">
-      <p>© 2026 我的博客 · 一个慢慢长大的博客。</p>
-    </footer>
-
+    <footer class="footer"><p>© 2026 慢慢记 · 给日常留一盏灯</p></footer>
     <script src="./blog-config.js"></script>
     <script src="./blog-data.js"></script>
     <script src="./backend.js"></script>

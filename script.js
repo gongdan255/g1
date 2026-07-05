@@ -1,455 +1,671 @@
-const blog = window.PaperBlogData;
-const backend = window.PaperBlogBackend;
+const data = window.JournalData;
+const backend = window.JournalBackend;
+const page = document.body.dataset.page;
+const params = new URLSearchParams(window.location.search);
+const defaultCover = data.images.home;
 
-const todayText = document.getElementById("todayText");
-const cursorGlow = document.querySelector(".cursor-glow");
-const revealNodes = document.querySelectorAll(".reveal");
-const articleHero = document.getElementById("articleHero");
-const articleTitle = document.getElementById("articleTitle");
-const articleSubtitle = document.getElementById("articleSubtitle");
-const articleCategory = document.getElementById("articleCategory");
-const articleDate = document.getElementById("articleDate");
-const articleReadTime = document.getElementById("articleReadTime");
-const articleTags = document.getElementById("articleTags");
-const articleContent = document.getElementById("articleContent");
-const relatedLinks = document.getElementById("relatedLinks");
-const publishForm = document.querySelector(".publish-form");
-const saveDraftBtn = document.getElementById("saveDraftBtn");
-const coverPreview = document.getElementById("coverPreview");
-const coverUrlInput = publishForm?.elements.coverUrl;
-const coverFileInput = publishForm?.elements.coverFile;
-const postsCatalog = document.getElementById("postsCatalog");
-const categoryFilters = document.getElementById("categoryFilters");
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
-const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
-  month: "long",
-  day: "numeric",
-  weekday: "long",
-});
-
-const defaultCover =
-  "https://images.unsplash.com/photo-1513267048331-5611cad62e41?auto=format&fit=crop&w=1200&q=80";
-
-let allPosts = [];
-let selectedCoverFile = null;
-let selectedCoverUrl = "";
-let revealObserver = null;
-
-const categoryOrder = ["旅行", "读书", "日常", "随笔", "回忆", "夜晚", "灵感"];
-const categoryAliases = {
-  生活: "日常",
+const typeLabel = {
+  diary: "日记",
+  post: "文章",
+  album: "相册",
 };
 
-const getCategoryLabel = (value) => categoryAliases[value] || value || "未分类";
-
-const sortPostsByDateDesc = (posts) =>
-  posts.slice().sort((a, b) => {
-    const dateCompare = String(b.date || "").localeCompare(String(a.date || ""));
-    if (dateCompare !== 0) return dateCompare;
-    return String(b.slug || "").localeCompare(String(a.slug || ""));
-  });
-
-const formatDateLabel = (dateStr) => String(dateStr || "").replaceAll("-", "/");
+let currentEntries = [];
 
 const escapeHtml = (value) =>
-  String(value)
+  String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
-const attachTiltEffects = (nodes) => {
-  nodes.forEach((card) => {
-    card.addEventListener("pointermove", (event) => {
-      const bounds = card.getBoundingClientRect();
-      const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 8;
-      const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * -8;
-      card.style.transform = `translateY(-6px) perspective(900px) rotateX(${y}deg) rotateY(${x}deg)`;
-    });
+const fmtDate = (date) => String(date || "").replaceAll("-", ".");
+const entryHref = (entry) =>
+  entry.type === "album" ? `./album.html?id=${encodeURIComponent(entry.id)}` : `./post.html?id=${encodeURIComponent(entry.id)}`;
 
-    card.addEventListener("pointerleave", () => {
-      card.style.transform = "";
-    });
+const sortEntries = (entries) =>
+  entries.slice().sort((a, b) => {
+    const dateCompare = String(b.date || "").localeCompare(String(a.date || ""));
+    if (dateCompare !== 0) return dateCompare;
+    return String(b.id || "").localeCompare(String(a.id || ""));
+  });
+
+const mergeEntries = (...groups) => {
+  const map = new Map();
+  groups.flat().forEach((entry) => {
+    if (!entry?.id) return;
+    if (!map.has(entry.id)) {
+      map.set(entry.id, entry);
+      return;
+    }
+    const existing = map.get(entry.id);
+    if (existing?.source !== "remote" && entry?.source === "remote") {
+      map.set(entry.id, entry);
+    }
+  });
+  return sortEntries([...map.values()]);
+};
+
+const entries = () => currentEntries;
+const findEntry = (id) => entries().find((entry) => entry.id === id);
+const entriesByType = (type) => entries().filter((entry) => entry.type === type);
+
+const includesText = (entry, query) => {
+  if (!query) return true;
+  const haystack = [
+    entry.title,
+    entry.summary,
+    entry.location,
+    entry.mood,
+    entry.weather,
+    entry.category,
+    ...(entry.tags || []),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query.toLowerCase());
+};
+
+const tagsHtml = (tags = []) =>
+  tags.length ? `<div class="tag-list">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : "";
+
+const actionBarHtml = (entry) => `
+  <div class="entry-actions">
+    <a class="btn btn-secondary" href="${
+      entry.type === "diary" ? "./diary.html" : entry.type === "album" ? "./albums.html" : "./posts.html"
+    }">返回列表</a>
+    ${
+      entry.source === "local"
+        ? `<button class="btn btn-danger" type="button" data-delete-entry="${escapeHtml(entry.id)}">删除这条${
+            typeLabel[entry.type] || "记录"
+          }</button>`
+        : ""
+    }
+  </div>
+`;
+
+const cardHtml = (entry) => `
+  <article class="entry-card">
+    <a href="${entryHref(entry)}">
+      <img src="${escapeHtml(entry.cover || defaultCover)}" alt="${escapeHtml(entry.title)}" />
+      <div class="entry-card-body">
+        <div class="card-meta">${escapeHtml(entry.category || typeLabel[entry.type])} · ${fmtDate(entry.date)} · ${escapeHtml(
+          entry.mood || ""
+        )}</div>
+        <h3>${escapeHtml(entry.title)}</h3>
+        <p>${escapeHtml(entry.summary)}</p>
+        ${tagsHtml(entry.tags)}
+      </div>
+    </a>
+  </article>
+`;
+
+const diaryHtml = (entry) => `
+  <article class="diary-card">
+    <time>${fmtDate(entry.date)} · ${escapeHtml(entry.weather || "")}</time>
+    <h3><a href="${entryHref(entry)}">${escapeHtml(entry.title)}</a></h3>
+    <p>${escapeHtml(entry.summary)}</p>
+    <div class="meta">${escapeHtml(entry.mood || "")} / ${escapeHtml(entry.location || "")}</div>
+    ${tagsHtml(entry.tags)}
+  </article>
+`;
+
+const albumCardHtml = (album) => {
+  const photos = album.photos?.length
+    ? album.photos
+    : [{ src: album.cover || defaultCover, caption: album.title }];
+
+  return `
+    <article class="album-card">
+      <a href="./album.html?id=${encodeURIComponent(album.id)}">
+        <div class="album-stack">
+          ${photos
+            .slice(0, 3)
+            .map((photo) => `<img src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.caption || album.title)}" />`)
+            .join("")}
+        </div>
+        <div class="album-card-body">
+          <div class="card-meta">${fmtDate(album.date)} · ${escapeHtml(album.location || "")} · ${photos.length} 张照片</div>
+          <h3>${escapeHtml(album.title)}</h3>
+          <p>${escapeHtml(album.summary)}</p>
+          ${tagsHtml(album.tags)}
+        </div>
+      </a>
+    </article>
+  `;
+};
+
+const setActiveNav = () => {
+  const detailEntry = findEntry(params.get("id"));
+  $$("[data-nav]").forEach((link) => {
+    const key = link.dataset.nav;
+    const active =
+      key === page ||
+      (page === "entry" && detailEntry?.type === "diary" && key === "diary") ||
+      (page === "entry" && detailEntry?.type === "post" && key === "posts") ||
+      (page === "album" && key === "albums");
+    link.classList.toggle("active", active);
   });
 };
 
-const setCoverPreview = (src, label = "封面预览") => {
-  if (!coverPreview) return;
-
-  if (src) {
-    coverPreview.classList.add("has-image");
-    coverPreview.style.backgroundImage = `linear-gradient(180deg, rgba(255,255,255,0.1), rgba(85,60,48,0.16)), url("${src}")`;
-    coverPreview.innerHTML = `<span>${escapeHtml(label)}</span>`;
-    return;
-  }
-
-  coverPreview.classList.remove("has-image");
-  coverPreview.style.backgroundImage = "";
-  coverPreview.innerHTML = "<span>封面预览</span>";
-};
-
-const getQueryParam = (key) => new URLSearchParams(window.location.search).get(key);
-
-const normalizePost = (post) => ({
-  ...post,
-  slug: post.slug || post.id,
-  category: getCategoryLabel(post.category),
-  body: Array.isArray(post.body) ? post.body : [],
-  notes: Array.isArray(post.notes) ? post.notes : [],
-  related: Array.isArray(post.related) ? post.related : [],
-});
-
-const loadPosts = async () => {
-  if (backend) {
-    try {
-      const posts = await backend.listPosts();
-      return sortPostsByDateDesc(posts.map(normalizePost));
-    } catch (error) {
-      console.warn("后端加载失败，已回退到本地内容。", error);
-    }
-  }
-
-  return sortPostsByDateDesc(blog.getAllPosts().map(normalizePost));
-};
-
-const renderHomePage = () => {
-  const featuredCard = document.querySelector(".featured-card");
-  const homeCards = document.querySelectorAll(".page-shell .post-grid .post-card");
-  const latestPosts = allPosts.slice(0, 4);
-
-  if (featuredCard && latestPosts[0]) {
-    const [image, body] = featuredCard.querySelectorAll(".featured-image, .card-body");
-    const title = body?.querySelector("h3");
-    const paragraph = body?.querySelectorAll("p")?.[1];
-    const link = body?.querySelector(".text-link");
-    const category = body?.querySelector(".eyebrow");
-
-    if (image) {
-      image.style.backgroundImage = `linear-gradient(150deg, rgba(255,255,255,0.08), rgba(96,65,52,0.05)), radial-gradient(circle at 30% 20%, rgba(255,240,220,0.42), transparent 28%), url("${latestPosts[0].cover || defaultCover}")`;
-      image.setAttribute("aria-label", latestPosts[0].imageAlt || latestPosts[0].title);
-    }
-    if (category) category.textContent = `本周${latestPosts[0].category}`;
-    if (title) title.textContent = latestPosts[0].title;
-    if (paragraph) paragraph.textContent = latestPosts[0].featured;
-    if (link) link.href = `./post.html?id=${encodeURIComponent(latestPosts[0].slug)}`;
-  }
-
-  homeCards.forEach((card, index) => {
-    const post = latestPosts[index];
-    if (!post) return;
-
-    const thumb = card.querySelector(".post-thumb");
-    const title = card.querySelector("h3");
-    const excerpt = card.querySelector("p");
-    const meta = card.querySelector(".post-meta");
-    const time = card.querySelector("time");
-    const span = meta?.querySelector("span");
-
-    if (thumb) {
-      thumb.style.backgroundImage = `url("${post.cover || defaultCover}")`;
-      thumb.setAttribute("aria-label", post.imageAlt || post.title);
-    }
-    if (span) span.textContent = post.category;
-    if (time) time.textContent = post.date;
-    if (title) title.textContent = post.title;
-    if (excerpt) excerpt.textContent = post.excerpt;
-
-    card.style.cursor = "pointer";
-    card.addEventListener("click", () => {
-      window.location.href = `./post.html?id=${encodeURIComponent(post.slug)}`;
-    });
-  });
-};
-
-const renderPostsList = () => {
-  if (categoryFilters) {
-    const sections = categoryOrder
-      .filter((category) => allPosts.some((post) => getCategoryLabel(post.category) === category))
-      .map(
-        (category) => `
-          <a href="#category-${encodeURIComponent(category)}">${category}</a>
-        `
-      )
+const makeFilters = (container, values, onChange) => {
+  if (!container) return;
+  let active = "全部";
+  const render = () => {
+    container.innerHTML = ["全部", ...values]
+      .map((value) => `<button class="chip ${value === active ? "active" : ""}" type="button" data-value="${escapeHtml(value)}">${escapeHtml(value)}</button>`)
       .join("");
+  };
+  container.addEventListener("click", (event) => {
+    const button = event.target.closest(".chip");
+    if (!button) return;
+    active = button.dataset.value;
+    render();
+    onChange(active);
+  });
+  render();
+};
 
-    categoryFilters.innerHTML = sections;
-  }
+const wireDeleteButtons = () => {
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-entry]");
+    if (!button) return;
+    const entry = findEntry(button.dataset.deleteEntry);
+    if (!entry || entry.source !== "local") return;
+    const ok = window.confirm(`确定要删除《${entry.title}》吗？`);
+    if (!ok) return;
+    data.deleteEntry(entry.id);
+    currentEntries = mergeEntries(currentEntries.filter((item) => item.id !== entry.id));
+    window.location.href = entry.type === "album" ? "./albums.html" : entry.type === "diary" ? "./diary.html" : "./posts.html";
+  });
+};
 
-  if (!postsCatalog) return;
+const renderHome = () => {
+  const all = entries();
+  const diaries = entriesByType("diary");
+  const posts = entriesByType("post");
+  const albums = entriesByType("album");
+  const today = diaries[0] || all[0];
+  const review = data.getReviews()[0];
 
-  const groupedPosts = categoryOrder.map((category) => ({
-    category,
-    posts: allPosts
-      .filter((post) => getCategoryLabel(post.category) === category)
-      .slice()
-      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))),
-  })).filter((group) => group.posts.length > 0);
+  $("#todayTitle").textContent = new Intl.DateTimeFormat("zh-CN", {
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(new Date());
+  $("#todayMood").textContent = today?.mood || "平静";
+  $("#todayWeather").textContent = today?.weather || "晴";
+  $("#todayCount").textContent = `${all.length} 条`;
+  $("#homeLittleThings").innerHTML = (today?.littleThings?.length
+    ? today.littleThings
+    : ["写下一件小事", "挑一张照片", "给今天留一句话"])
+    .slice(0, 4)
+    .map((thing) => `<span>${escapeHtml(thing)}</span>`)
+    .join("");
 
-  postsCatalog.innerHTML = groupedPosts
+  $("#homeDiaries").innerHTML = diaries.slice(0, 3).map(diaryHtml).join("");
+  $("#homePosts").innerHTML = posts
+    .slice(0, 4)
     .map(
-      (group) => `
-        <section class="category-section reveal category-anchor" id="category-${encodeURIComponent(group.category)}">
-          <div class="category-heading">
-            <h3>${escapeHtml(group.category)}</h3>
-            <span>${group.posts.length} 篇</span>
-          </div>
-          <div class="category-grid">
-            ${group.posts
-              .map(
-                (post) => `
-                  <article class="post-card float-card" data-tilt>
-                    <div class="post-thumb" style="background-image:url('${post.cover || defaultCover}')"></div>
-                    <div class="post-content">
-                      <div class="post-meta"><span>${escapeHtml(post.category)}</span><time>${escapeHtml(post.date)}</time></div>
-                      <h3><a href="./post.html?id=${encodeURIComponent(post.slug)}">${escapeHtml(post.title)}</a></h3>
-                      <p>${escapeHtml(post.excerpt)}</p>
-                    </div>
-                  </article>
-                `
-              )
-              .join("")}
-          </div>
-        </section>
+      (post) => `
+        <a class="entry-row" href="${entryHref(post)}">
+          <span class="meta">${fmtDate(post.date)}</span>
+          <span><strong>${escapeHtml(post.title)}</strong><br /><small>${escapeHtml(post.summary)}</small></span>
+        </a>
       `
     )
     .join("");
-
-  attachTiltEffects(postsCatalog.querySelectorAll("[data-tilt]"));
+  $("#homeAlbums").innerHTML = albums
+    .slice(0, 3)
+    .map(
+      (album) => `
+        <a class="album-mini" href="./album.html?id=${encodeURIComponent(album.id)}">
+          <img src="${escapeHtml(album.cover || album.photos?.[0]?.src || defaultCover)}" alt="${escapeHtml(album.title)}" />
+          <span><strong>${escapeHtml(album.title)}</strong><br /><small>${fmtDate(album.date)} · ${
+            album.photos?.length || 0
+          } 张照片</small></span>
+        </a>
+      `
+    )
+    .join("");
+  $("#homeReview").innerHTML = review
+    ? `
+        <h3>${escapeHtml(review.title)}</h3>
+        <p>${escapeHtml(review.summary)}</p>
+        <div class="review-metrics">${review.highlights.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+        ${tagsHtml(review.keywords)}
+      `
+    : "";
 };
 
-const renderPostDetail = () => {
-  if (!articleHero) return;
+const renderDiaries = () => {
+  const list = $("#diaryList");
+  const search = $("#diarySearch");
+  const diaries = entriesByType("diary");
+  let filter = "全部";
+  const moods = [...new Set(diaries.map((item) => item.mood).filter(Boolean))];
 
-  const requestedId = getQueryParam("id") || allPosts[0]?.slug;
-  const post = allPosts.find((item) => item.slug === requestedId || item.id === requestedId) || allPosts[0];
+  const render = () => {
+    const query = search.value.trim();
+    const filtered = diaries.filter((item) => (filter === "全部" || item.mood === filter) && includesText(item, query));
+    list.innerHTML = filtered
+      .map(
+        (item) => `
+          <article class="timeline-item">
+            <div class="timeline-date">${fmtDate(item.date)}<br /><span>${escapeHtml(item.weather || "")}</span></div>
+            <div>
+              <div class="meta">${escapeHtml(item.mood || "")} · ${escapeHtml(item.location || "")}</div>
+              <h3><a href="${entryHref(item)}">${escapeHtml(item.title)}</a></h3>
+              <p>${escapeHtml(item.summary)}</p>
+              ${
+                item.littleThings?.length
+                  ? `<div class="little-list">${item.littleThings.map((thing) => `<span>${escapeHtml(thing)}</span>`).join("")}</div>`
+                  : ""
+              }
+              ${tagsHtml(item.tags)}
+            </div>
+          </article>
+        `
+      )
+      .join("");
+  };
 
-  if (!post) return;
+  search.addEventListener("input", render);
+  makeFilters($("#diaryFilters"), moods, (value) => {
+    filter = value;
+    render();
+  });
+  render();
+};
 
-  document.title = `${post.title} | 我的博客`;
-  articleHero.style.background = `
-    linear-gradient(180deg, rgba(255, 248, 240, 0.9), rgba(255, 248, 240, 0.9)),
-    url("${post.cover || defaultCover}")
+const renderPosts = () => {
+  const list = $("#postList");
+  const search = $("#postSearch");
+  const posts = entriesByType("post");
+  let filter = "全部";
+  const categories = [...new Set(posts.map((item) => item.category).filter(Boolean))];
+
+  const render = () => {
+    const query = search.value.trim();
+    const filtered = posts.filter((item) => (filter === "全部" || item.category === filter) && includesText(item, query));
+    list.innerHTML = filtered.map(cardHtml).join("");
+  };
+
+  search.addEventListener("input", render);
+  makeFilters($("#postFilters"), categories, (value) => {
+    filter = value;
+    render();
+  });
+  render();
+};
+
+const renderAlbums = () => {
+  const list = $("#albumList");
+  const search = $("#albumSearch");
+  const albums = entriesByType("album");
+  let filter = "全部";
+  const tags = [...new Set(albums.flatMap((album) => album.tags || []))].filter((tag) => tag !== "相册");
+
+  const render = () => {
+    const query = search.value.trim();
+    const filtered = albums.filter((album) => (filter === "全部" || album.tags?.includes(filter)) && includesText(album, query));
+    list.innerHTML = filtered.map(albumCardHtml).join("");
+  };
+
+  search.addEventListener("input", render);
+  makeFilters($("#albumFilters"), tags, (value) => {
+    filter = value;
+    render();
+  });
+  render();
+};
+
+const renderEntryDetail = () => {
+  const entry = findEntry(params.get("id")) || entriesByType("post")[0] || entriesByType("diary")[0];
+  if (!entry) return;
+  document.title = `${entry.title} | 慢慢记`;
+  document.body.dataset.detailType = entry.type;
+
+  $("#entryDetail").innerHTML = `
+    <article>
+      <header class="article-hero detail-${entry.type} reveal">
+        <p class="eyebrow">${escapeHtml(typeLabel[entry.type] || "记录")}</p>
+        <h1>${escapeHtml(entry.title)}</h1>
+        <div class="article-meta">
+          <span>${fmtDate(entry.date)}</span>
+          <span>${escapeHtml(entry.type === "post" ? entry.category || "" : entry.mood || "")}</span>
+          <span>${escapeHtml(entry.weather || "")}</span>
+          <span>${escapeHtml(entry.location || "")}</span>
+          ${entry.type === "post" && entry.readTime ? `<span>${escapeHtml(entry.readTime)}</span>` : ""}
+        </div>
+        ${entry.cover ? `<img class="article-cover" src="${escapeHtml(entry.cover)}" alt="${escapeHtml(entry.title)}" />` : ""}
+        ${tagsHtml(entry.tags)}
+      </header>
+      <div class="article-content detail-${entry.type} reveal">
+        ${entry.summary ? `<p><strong>${escapeHtml(entry.summary)}</strong></p>` : ""}
+        ${(entry.body || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+        ${
+          entry.littleThings?.length
+            ? `<div class="little-list">${entry.littleThings.map((thing) => `<span>${escapeHtml(thing)}</span>`).join("")}</div>`
+            : ""
+        }
+        ${actionBarHtml(entry)}
+      </div>
+    </article>
   `;
-  articleHero.style.backgroundSize = "cover";
-  articleHero.style.backgroundPosition = "center";
-
-  if (articleTitle) articleTitle.textContent = post.title;
-  if (articleSubtitle) articleSubtitle.textContent = post.featured || post.excerpt;
-  if (articleCategory) articleCategory.textContent = post.category;
-  if (articleDate) articleDate.textContent = formatDateLabel(post.date);
-  if (articleReadTime) articleReadTime.textContent = `阅读 ${post.readTime || "5 分钟"}`;
-  if (articleTags) articleTags.textContent = `标签：${post.category} / 随笔`;
-
-  if (articleContent) {
-    const bodyHtml = (post.body || [])
-      .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
-      .join("");
-
-    articleContent.innerHTML = `
-      <p>这是一篇关于“${escapeHtml(post.category)}”的记录。它不是为了证明什么，只是想把今天的感受轻轻收好。</p>
-      ${bodyHtml}
-      <blockquote>${escapeHtml(post.featured || post.excerpt)}</blockquote>
-      <p>如果你也正好在某个不太急的晚上读到这里，希望这篇小小的文字能陪你把呼吸放慢一点。</p>
-    `;
-  }
-
-  if (relatedLinks) {
-    const relatedTitles =
-      post.related?.length > 0
-        ? post.related
-        : allPosts.filter((item) => item.category === post.category && item.slug !== post.slug).slice(0, 3).map((item) => item.title);
-
-    const related = relatedTitles
-      .map((title) => {
-        const relatedPost = allPosts.find((item) => item.title === title);
-        if (!relatedPost) return "";
-        return `<a class="related-link" href="./post.html?id=${encodeURIComponent(relatedPost.slug)}">${escapeHtml(relatedPost.title)}</a>`;
-      })
-      .filter(Boolean)
-      .join("");
-
-    relatedLinks.innerHTML = related || '<p class="muted">暂无相关文章。</p>';
-  }
 };
 
-const renderAboutData = () => {
-  const aboutPortrait = document.querySelector(".about-portrait");
-  if (aboutPortrait) {
-    aboutPortrait.style.backgroundImage =
-      'url("https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=80")';
-  }
+const renderAlbumDetail = () => {
+  const album = findEntry(params.get("id")) || entriesByType("album")[0];
+  if (!album) return;
+  document.title = `${album.title} | 慢慢记`;
+
+  $("#albumDetail").innerHTML = `
+    <article>
+      <header class="article-hero detail-album reveal">
+        <p class="eyebrow">Photo Story</p>
+        <h1>${escapeHtml(album.title)}</h1>
+        <div class="article-meta">
+          <span>${fmtDate(album.date)}</span>
+          <span>${escapeHtml(album.location || "")}</span>
+          <span>${escapeHtml(album.mood || "")}</span>
+          <span>${escapeHtml(album.weather || "")}</span>
+          <span>${album.photos?.length || 0} 张照片</span>
+        </div>
+        ${tagsHtml(album.tags)}
+      </header>
+      <div class="article-content detail-album reveal">
+        ${(album.body || []).length ? album.body.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("") : `<p>${escapeHtml(album.summary || "")}</p>`}
+        <div class="photo-story">
+          ${(album.photos || [])
+            .map(
+              (photo) => `
+                <figure>
+                  <img src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.caption || album.title)}" />
+                  <figcaption>${escapeHtml(photo.caption || "")}</figcaption>
+                </figure>
+              `
+            )
+            .join("")}
+        </div>
+        ${actionBarHtml(album)}
+      </div>
+    </article>
+  `;
 };
 
-const restoreDraft = () => {
-  if (!publishForm) return;
-  const raw = localStorage.getItem("paper-diary.draft.v1");
-  if (!raw) return;
+const renderCalendar = () => {
+  const all = entries();
+  const currentMonth = (all[0]?.date || new Date().toISOString().slice(0, 10)).slice(0, 7);
+  const [year, month] = currentMonth.split("-").map(Number);
+  const first = new Date(year, month - 1, 1);
+  const days = new Date(year, month, 0).getDate();
+  const offset = first.getDay();
+  const byDate = all.reduce((acc, item) => {
+    acc[item.date] = acc[item.date] || [];
+    acc[item.date].push(item);
+    return acc;
+  }, {});
 
-  try {
-    const draft = JSON.parse(raw);
-    publishForm.elements.title.value = draft.title || "";
-    publishForm.elements.category.value = draft.category || "随笔";
-    publishForm.elements.excerpt.value = draft.excerpt || "";
-    publishForm.elements.coverUrl.value = draft.coverUrl || "";
-    publishForm.elements.body.value = draft.body || "";
-    if (draft.coverDataUrl) {
-      selectedCoverUrl = draft.coverDataUrl;
-      setCoverPreview(draft.coverDataUrl, "草稿封面");
-    } else if (draft.coverUrl) {
-      setCoverPreview(draft.coverUrl, "草稿封面");
-    }
-  } catch {
-    // Ignore broken drafts and start fresh.
+  const cells = [];
+  for (let index = 0; index < offset; index += 1) {
+    cells.push(`<div class="calendar-cell empty"></div>`);
   }
+  for (let day = 1; day <= days; day += 1) {
+    const date = `${currentMonth}-${String(day).padStart(2, "0")}`;
+    const dayEntries = byDate[date] || [];
+    cells.push(`
+      <a class="calendar-cell" href="${dayEntries[0] ? entryHref(dayEntries[0]) : "#"}">
+        <strong>${day}</strong>
+        <span class="meta">${dayEntries.length ? dayEntries.map((item) => typeLabel[item.type]).join(" / ") : ""}</span>
+        <div class="dots">${dayEntries.map(() => `<span class="dot"></span>`).join("")}</div>
+      </a>
+    `);
+  }
+
+  $("#calendarGrid").innerHTML = `
+    <div class="calendar-head"><h2>${year} 年 ${month} 月</h2><span class="meta">${all.length} 条记录</span></div>
+    <div class="calendar-days">${["日", "一", "二", "三", "四", "五", "六"].map((day) => `<span>${day}</span>`).join("")}</div>
+    <div class="calendar-cells">${cells.join("")}</div>
+  `;
+
+  const moods = all.map((item) => item.mood).filter(Boolean);
+  const topMood = moods.reduce((best, mood) => {
+    const bestCount = moods.filter((item) => item === best).length;
+    const moodCount = moods.filter((item) => item === mood).length;
+    return moodCount > bestCount ? mood : best;
+  }, moods[0] || "平静");
+
+  $("#calendarSummary").innerHTML = `
+    <p class="panel-label">Month Summary</p>
+    <h2>${currentMonth}</h2>
+    <p>这个月已经保存 ${all.filter((item) => item.date.startsWith(currentMonth)).length} 条记录。</p>
+    <div class="review-metrics">
+      <span>常见心情：${escapeHtml(topMood)}</span>
+      <span>日记：${entriesByType("diary").length}</span>
+      <span>相册：${entriesByType("album").length}</span>
+    </div>
+  `;
 };
 
-const wireCoverPreview = () => {
-  if (!publishForm) return;
+const renderReviews = () => {
+  $("#reviewList").innerHTML = data
+    .getReviews()
+    .map(
+      (review) => `
+        <article class="review-card">
+          <div class="meta">${escapeHtml(review.month)}</div>
+          <h3>${escapeHtml(review.title)}</h3>
+          <p>${escapeHtml(review.summary)}</p>
+          <div class="review-metrics">${review.highlights.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+          ${tagsHtml(review.keywords)}
+        </article>
+      `
+    )
+    .join("");
+};
 
-  coverUrlInput?.addEventListener("input", () => {
-    const value = String(coverUrlInput.value || "").trim();
-    if (value) {
-      selectedCoverUrl = value;
-      selectedCoverFile = null;
-      if (coverFileInput) coverFileInput.value = "";
-      setCoverPreview(value, "网络封面");
+const parseLines = (value) => String(value || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+const parseTags = (value) => String(value || "").split(/[,，]/).map((tag) => tag.trim()).filter(Boolean);
+const parsePhotos = (value) =>
+  parseLines(value)
+    .map((line) => {
+      const [src, caption = ""] = line.split("|").map((part) => part.trim());
+      return { src, caption };
+    })
+    .filter((photo) => photo.src);
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    if (!file) {
+      resolve("");
       return;
     }
-    if (!selectedCoverFile) {
-      selectedCoverUrl = "";
-      setCoverPreview("");
-    }
-  });
-
-  coverFileInput?.addEventListener("change", async () => {
-    const file = coverFileInput.files?.[0];
-    if (!file) return;
-
-    selectedCoverFile = file;
-    if (coverUrlInput) coverUrlInput.value = "";
-
     const reader = new FileReader();
-    reader.onload = () => {
-      selectedCoverUrl = String(reader.result || "");
-      setCoverPreview(selectedCoverUrl, "本地封面");
-    };
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+
+const getBodyByType = (formData, type) => {
+  if (type === "post") return parseLines(formData.get("bodyPost"));
+  if (type === "album") return parseLines(formData.get("bodyAlbum"));
+  return parseLines(formData.get("bodyDiary"));
 };
 
-const wirePublishPage = () => {
-  if (!publishForm) return;
+const wirePublish = () => {
+  const form = $("#publishForm");
+  const draftStatus = $("#draftStatus");
+  const localCoverInput = $("#coverFile");
+  const localAlbumInput = $("#albumFiles");
+  const coverPreview = $("#coverPreview");
+  const albumPreview = $("#albumPreview");
+  let localCoverDataUrl = "";
+  let localAlbumPhotos = [];
 
-  publishForm.addEventListener("submit", async (event) => {
+  if (!form) return;
+
+  const setType = () => {
+    document.body.dataset.entryType = new FormData(form).get("type") || "diary";
+  };
+
+  const updateCoverPreview = () => {
+    const url = localCoverDataUrl || String(form.elements.cover?.value || "").trim();
+    coverPreview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="封面预览" />` : `<span>封面预览</span>`;
+  };
+
+  const updateAlbumPreview = () => {
+    const linkPhotos = parsePhotos(form.elements.photos?.value || "");
+    const photos = [...localAlbumPhotos, ...linkPhotos].slice(0, 5);
+    albumPreview.innerHTML = photos.length
+      ? photos
+          .map(
+            (photo) => `
+              <figure>
+                <img src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.caption || "相册图片")}" />
+                <figcaption>${escapeHtml(photo.caption || "本地图片")}</figcaption>
+              </figure>
+            `
+          )
+          .join("")
+      : `<span>选择本地图片或填写图片链接后，这里会显示预览。</span>`;
+  };
+
+  $$('input[name="type"]', form).forEach((input) => input.addEventListener("change", setType));
+  form.elements.cover?.addEventListener("input", updateCoverPreview);
+  form.elements.photos?.addEventListener("input", updateAlbumPreview);
+  setType();
+  updateCoverPreview();
+  updateAlbumPreview();
+
+  localCoverInput?.addEventListener("change", async () => {
+    localCoverDataUrl = await readFileAsDataUrl(localCoverInput.files?.[0]);
+    updateCoverPreview();
+  });
+
+  localAlbumInput?.addEventListener("change", async () => {
+    const files = [...(localAlbumInput.files || [])].slice(0, 5);
+    localAlbumPhotos = await Promise.all(
+      files.map(async (file, index) => ({
+        src: await readFileAsDataUrl(file),
+        caption: `本地照片 ${index + 1}`,
+      }))
+    );
+    updateAlbumPreview();
+  });
+
+  const draft = data.getDraft();
+  draftStatus.textContent = draft ? `有一份 ${typeLabel[draft.type] || "记录"} 草稿：${draft.title || "未命名"}` : "当前没有草稿。";
+
+  $("#saveDraftBtn").addEventListener("click", () => {
+    const draftPayload = Object.fromEntries(new FormData(form).entries());
+    data.saveDraft(draftPayload);
+    draftStatus.textContent = `草稿已保存：${draftPayload.title || "未命名"}`;
+  });
+
+  $("#restoreDraftBtn").addEventListener("click", () => {
+    const saved = data.getDraft();
+    if (!saved) return;
+    Object.entries(saved).forEach(([key, value]) => {
+      const field = form.elements[key];
+      if (!field) return;
+      if (field instanceof RadioNodeList) {
+        [...field].forEach((item) => {
+          item.checked = item.value === value;
+        });
+      } else {
+        field.value = value;
+      }
+    });
+    setType();
+    updateCoverPreview();
+    updateAlbumPreview();
+  });
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const formData = new FormData(form);
+    const type = String(formData.get("type") || "diary");
+    const photos = [...localAlbumPhotos, ...parsePhotos(formData.get("photos"))].slice(0, 5);
+    const payload = {
+      type,
+      title: String(formData.get("title") || "").trim(),
+      date: String(formData.get("date") || "").trim(),
+      mood: String(formData.get("mood") || "平静").trim(),
+      weather: String(formData.get("weather") || "晴").trim(),
+      location: String(formData.get("location") || "").trim(),
+      category: type === "post" ? String(formData.get("category") || "随笔").trim() : "",
+      tags: parseTags(formData.get("tags")),
+      summary: String(formData.get("summary") || "").trim(),
+      cover: localCoverDataUrl || String(formData.get("cover") || "").trim(),
+      littleThings: parseLines(formData.get("littleThings")),
+      photos,
+      body: getBodyByType(formData, type),
+    };
 
-    const formData = new FormData(publishForm);
-    const title = String(formData.get("title") || "").trim();
-    const category = String(formData.get("category") || "随笔").trim();
-    const excerpt = String(formData.get("excerpt") || "").trim();
-    const body = String(formData.get("body") || "").trim();
-    const coverUrl = String(formData.get("coverUrl") || "").trim();
-
-    if (!title || !body) {
-      window.alert("请先填写标题和正文。");
+    if (!payload.title) {
+      window.alert("先写一个标题吧。");
+      return;
+    }
+    if (!payload.summary && payload.body.length) {
+      payload.summary = payload.body[0];
+    }
+    if (type === "album" && photos.length < 3) {
+      window.alert("相册集至少放 3 张照片，可以用本地上传或图片链接。");
       return;
     }
 
-    const payload = {
-      title,
-      category,
-      excerpt,
-      coverUrl: selectedCoverFile ? selectedCoverUrl : coverUrl,
-      coverFile: selectedCoverFile || null,
-      body,
-      notes: [
-        "这是一篇新发布的日记。",
-        "它先在浏览器里生成，如果配置了后端，也会同步到服务器。",
-      ],
-    };
-
     try {
-      const created = backend ? await backend.createPost(payload) : blog.createPost(payload);
-      localStorage.removeItem("paper-diary.draft.v1");
-      window.location.href = `./post.html?id=${encodeURIComponent(created.slug || created.id)}`;
-    } catch (error) {
-      console.error(error);
-      window.alert("发布失败了，请检查后端配置或稍后重试。");
-    }
-  });
+      const created =
+        backend?.isSupabase?.() ? await backend.createEntry(payload) : data.createEntry(payload);
 
-  if (saveDraftBtn) {
-    saveDraftBtn.addEventListener("click", () => {
-      const formData = new FormData(publishForm);
-      const draft = {
-        title: String(formData.get("title") || ""),
-        category: String(formData.get("category") || "随笔"),
-        excerpt: String(formData.get("excerpt") || ""),
-        coverUrl: String(formData.get("coverUrl") || ""),
-        coverDataUrl: selectedCoverUrl || "",
-        body: String(formData.get("body") || ""),
-      };
-
-      localStorage.setItem("paper-diary.draft.v1", JSON.stringify(draft));
-      window.alert("草稿已保存到当前浏览器。");
-    });
-  }
-};
-
-const bootstrap = async () => {
-  document.body.classList.add("js-enabled");
-
-  if (todayText) {
-    todayText.textContent = dateFormatter.format(new Date());
-  }
-
-  if (cursorGlow) {
-    window.addEventListener("pointermove", (event) => {
-      cursorGlow.style.transform = `translate(${event.clientX}px, ${event.clientY}px) translate(-50%, -50%)`;
-    });
-  }
-
-if ("IntersectionObserver" in window) {
-    revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-          }
-        });
-      },
-      { threshold: 0.16 }
-    );
-
-    revealNodes.forEach((node) => revealObserver.observe(node));
-  }
-
-  document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-    anchor.addEventListener("click", (event) => {
-      const target = document.querySelector(anchor.getAttribute("href"));
-      if (!target) {
-        return;
+      if (!created) {
+        throw new Error("发布失败，未获得新记录。");
       }
 
-      event.preventDefault();
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+      currentEntries = mergeEntries([created], currentEntries);
+      data.clearDraft();
+      window.location.href = entryHref(created);
+    } catch (error) {
+      console.error(error);
+      window.alert(`发布失败：${error?.message || "请检查后端配置。"}`);
+    }
   });
-
-  allPosts = await loadPosts();
-  renderHomePage();
-  renderPostsList();
-  renderPostDetail();
-  renderAboutData();
-  wireCoverPreview();
-  wirePublishPage();
-  restoreDraft();
-  if (revealObserver && postsCatalog) {
-    postsCatalog.querySelectorAll(".reveal").forEach((node) => revealObserver.observe(node));
-    document.querySelectorAll(".page-shell .reveal").forEach((node) => node.classList.add("is-visible"));
-  }
-  attachTiltEffects(document.querySelectorAll("[data-tilt]"));
 };
 
-bootstrap();
+const loadSharedEntries = async () => {
+  const localEntries = data.getEntries();
+  if (!backend?.isSupabase?.()) {
+    return localEntries;
+  }
+
+  try {
+    const remoteEntries = await backend.listEntries();
+    return mergeEntries(remoteEntries, localEntries);
+  } catch (error) {
+    console.warn("共享内容加载失败，已回退到本地内容。", error);
+    return localEntries;
+  }
+};
+
+const boot = async () => {
+  currentEntries = await loadSharedEntries();
+  setActiveNav();
+  wireDeleteButtons();
+
+  if (page === "home") renderHome();
+  if (page === "diary") renderDiaries();
+  if (page === "posts") renderPosts();
+  if (page === "albums") renderAlbums();
+  if (page === "entry") renderEntryDetail();
+  if (page === "album") renderAlbumDetail();
+  if (page === "calendar") renderCalendar();
+  if (page === "review") renderReviews();
+  if (page === "publish") wirePublish();
+};
+
+boot();

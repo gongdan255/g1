@@ -1,5 +1,5 @@
-window.PaperBlogBackend = (() => {
-  const config = window.BLOG_BACKEND_CONFIG || { provider: "local" };
+window.JournalBackend = (() => {
+  const config = window.JOURNAL_BACKEND_CONFIG || { provider: "local" };
   let supabaseClient = null;
   let supabaseModule = null;
 
@@ -11,7 +11,7 @@ window.PaperBlogBackend = (() => {
     if (supabaseClient) return supabaseClient;
 
     if (!config.supabaseUrl || !config.supabaseAnonKey) {
-      throw new Error("Supabase 配置缺失，请填写 supabaseUrl 和 supabaseAnonKey。");
+      throw new Error("Supabase 配置缺失，请填写地址和匿名 Key。");
     }
 
     supabaseModule =
@@ -22,128 +22,152 @@ window.PaperBlogBackend = (() => {
     return supabaseClient;
   };
 
-  const toStoredPost = (post) => ({
-    id: post.id || post.slug,
-    slug: post.slug || post.id,
-    title: post.title,
-    category: post.category || "随笔",
-    date: post.date,
-    readTime: post.readTime || post.read_time || "5 分钟",
-    excerpt: post.excerpt || "",
-    cover: post.cover || "",
-    imageAlt: post.imageAlt || post.title,
-    featured: post.featured || post.excerpt || post.title,
-    body: Array.isArray(post.body)
-      ? post.body
-      : String(post.body || "")
-          .split(/\n+/)
-          .map((line) => line.trim())
-          .filter(Boolean),
-    notes: Array.isArray(post.notes) ? post.notes : [],
-    related: Array.isArray(post.related) ? post.related : [],
-    custom: Boolean(post.custom),
+  const toArray = (value) => (Array.isArray(value) ? value : []);
+
+  const normalizeEntry = (entry) => ({
+    id: entry.id,
+    type: entry.type || "diary",
+    title: entry.title || "未命名记录",
+    date: entry.date || new Date().toISOString().slice(0, 10),
+    category: entry.category || "",
+    mood: entry.mood || "",
+    weather: entry.weather || "",
+    location: entry.location || "",
+    tags: toArray(entry.tags),
+    summary: entry.summary || "",
+    cover: entry.cover || "",
+    readTime: entry.readTime || entry.read_time || "3 分钟",
+    littleThings: toArray(entry.littleThings || entry.little_things),
+    photos: toArray(entry.photos),
+    body: toArray(entry.body),
+    custom: true,
+    source: "remote",
+    createdAt: entry.createdAt || entry.created_at || "",
   });
 
-  const uploadImage = async (file) => {
-    if (!file) return "";
-    if (isLocal()) return "";
+  const slugify = (value) =>
+    String(value || "entry")
+      .trim()
+      .toLowerCase()
+      .replace(/[^\w\u4e00-\u9fa5]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "entry";
 
+  const buildEntryId = (type, date, title) =>
+    `${type}-${date}-${slugify(title)}-${crypto.randomUUID().slice(0, 8)}`;
+
+  const uploadBlob = async (blob, folder) => {
     const client = await ensureSupabase();
-    const ext = file.name.split(".").pop() || "png";
-    const filePath = `covers/${crypto.randomUUID()}.${ext}`;
     const bucket = config.supabaseBucket || "blog-images";
+    const extension = (blob.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "") || "png";
+    const path = `${folder}/${crypto.randomUUID()}.${extension}`;
 
-    const { error: uploadError } = await client.storage.from(bucket).upload(filePath, file, {
+    const { error } = await client.storage.from(bucket).upload(path, blob, {
       cacheControl: "3600",
       upsert: false,
-      contentType: file.type || "image/png",
+      contentType: blob.type || "image/png",
     });
 
-    if (uploadError) {
-      throw uploadError;
+    if (error) {
+      throw new Error(
+        `媒体上传失败：${error.message || "未知错误"}。请确认存储桶 ${bucket} 已创建并允许匿名上传。`
+      );
     }
 
-    const { data } = client.storage.from(bucket).getPublicUrl(filePath);
+    const { data } = client.storage.from(bucket).getPublicUrl(path);
     return data?.publicUrl || "";
   };
 
-  const listPosts = async () => {
-    if (isLocal()) {
-      return window.PaperBlogData.getAllPosts().map(toStoredPost);
-    }
+  const maybeUploadAsset = async (value, folder) => {
+    if (!value) return "";
+    if (!isSupabase()) return value;
+    if (/^https?:\/\//i.test(value)) return value;
+    if (!/^data:image\//i.test(value)) return value;
 
-    const client = await ensureSupabase();
-    const table = config.supabaseTable || "posts";
-    const { data, error } = await client.from(table).select("*").order("created_at", { ascending: false });
-
-    if (error) {
-      throw error;
-    }
-
-    return (data || []).map(toStoredPost);
+    const response = await fetch(value);
+    const blob = await response.blob();
+    return uploadBlob(blob, folder);
   };
 
-  const getPost = async (slug) => {
-    const posts = await listPosts();
-    return posts.find((post) => post.slug === slug || post.id === slug) || null;
-  };
-
-  const createPost = async ({ title, category, excerpt, body, coverUrl, coverFile, notes }) => {
-    if (isLocal()) {
-      return window.PaperBlogData.createPost({
-        title,
-        category,
-        excerpt,
-        coverNote: excerpt,
-        body,
-        cover: coverUrl || "",
-        imageAlt: title,
+  const maybeUploadPhotos = async (photos) => {
+    const uploaded = [];
+    for (const photo of toArray(photos)) {
+      const src = await maybeUploadAsset(photo?.src || "", "albums");
+      if (!src) continue;
+      uploaded.push({
+        src,
+        caption: photo?.caption || "",
       });
     }
+    return uploaded;
+  };
+
+  const listEntries = async () => {
+    if (isLocal()) return [];
 
     const client = await ensureSupabase();
-    const table = config.supabaseTable || "posts";
-    const cover = coverFile ? await uploadImage(coverFile) : coverUrl || "";
-    const now = new Date();
-    const slug = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-      now.getDate()
-    ).padStart(2, "0")}-${window.PaperBlogData.slugify(title)}`;
-
-    const payload = {
-      id: slug,
-      slug,
-      title,
-      category,
-      date: now.toISOString().slice(0, 10),
-      read_time: "1 分钟",
-      excerpt: excerpt || body.slice(0, 70),
-      cover,
-      image_alt: title,
-      featured: excerpt || body.slice(0, 120),
-      body: String(body || "")
-        .split(/\n+/)
-        .map((line) => line.trim())
-        .filter(Boolean),
-      notes: notes || [],
-      related: [],
-      created_at: now.toISOString(),
-    };
-
-    const { data, error } = await client.from(table).insert(payload).select().single();
+    const table = config.supabaseTable || "journal_entries";
+    const { data, error } = await client
+      .from(table)
+      .select("*")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    return toStoredPost(data);
+    return (data || []).map(normalizeEntry);
+  };
+
+  const createEntry = async (payload) => {
+    if (isLocal()) {
+      return null;
+    }
+
+    const client = await ensureSupabase();
+    const table = config.supabaseTable || "journal_entries";
+    const date = payload.date || new Date().toISOString().slice(0, 10);
+    const type = payload.type || "diary";
+    const uploadedPhotos = type === "album" ? await maybeUploadPhotos(payload.photos) : [];
+    const cover =
+      (await maybeUploadAsset(
+        payload.cover || (type === "album" ? uploadedPhotos[0]?.src || "" : ""),
+        type === "album" ? "albums" : "covers"
+      )) || (type === "album" ? uploadedPhotos[0]?.src || "" : "");
+
+    const entry = {
+      id: buildEntryId(type, date, payload.title),
+      type,
+      title: payload.title || "未命名记录",
+      date,
+      category: type === "post" ? payload.category || "随笔" : payload.category || "",
+      mood: payload.mood || "平静",
+      weather: payload.weather || "晴",
+      location: payload.location || "",
+      tags: toArray(payload.tags),
+      summary: payload.summary || "",
+      cover,
+      read_time: payload.readTime || "3 分钟",
+      little_things: toArray(payload.littleThings),
+      photos: uploadedPhotos,
+      body: toArray(payload.body),
+      created_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await client.from(table).insert(entry).select().single();
+
+    if (error) {
+      throw error;
+    }
+
+    return normalizeEntry(data);
   };
 
   return {
     isLocal,
     isSupabase,
-    listPosts,
-    getPost,
-    createPost,
-    uploadImage,
+    listEntries,
+    createEntry,
   };
 })();

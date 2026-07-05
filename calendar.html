@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="浏览全部长文章，支持分类和标签筛选。" />
-    <title>文章 | 慢慢记</title>
+    <meta name="description" content="用月历查看写过日记、文章和相册的日期。" />
+    <title>日历 | 慢慢记</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body data-page="posts">
+  <body data-page="calendar">
     <div class="paper-noise" aria-hidden="true"></div>
     <header class="topbar">
       <a class="brand" href="./index.html"><span class="brand-mark">慢</span><span><strong>慢慢记</strong><small>日记、文章、相册和月度回顾</small></span></a>
@@ -21,12 +21,11 @@
       <a class="write-button" href="./publish.html">+ 记录</a>
     </header>
     <main class="page-shell">
-      <section class="page-title reveal"><p class="eyebrow">Articles</p><h1>文章</h1><p>旅行、读书、随笔和那些适合慢慢展开的长记录。</p></section>
-      <section class="toolbar panel reveal">
-        <input id="postSearch" type="search" placeholder="搜索标题、摘要或标签" />
-        <div class="chip-row" id="postFilters"></div>
+      <section class="page-title reveal"><p class="eyebrow">Calendar</p><h1>日历</h1><p>有记录的日期会留下小点，点开就能回到那一天。</p></section>
+      <section class="calendar-layout reveal">
+        <div class="panel calendar-panel" id="calendarGrid"></div>
+        <aside class="panel" id="calendarSummary"></aside>
       </section>
-      <section class="card-grid reveal" id="postList"></section>
     </main>
     <footer class="footer"><p>© 2026 慢慢记</p></footer>
     <script src="./blog-config.js"></script>

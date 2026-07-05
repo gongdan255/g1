@@ -1,79 +1,56 @@
-# 我的博客
+# 慢慢记
 
-一个温暖手账风的动态博客首页，适合个人随笔、旅行记录、读书笔记和生活碎片。
+一个暖色纸感的手账日记系统，用来记录日记、长文章、相册集和月度回顾。
 
-## 特点
+## 页面预览
 
-- 纸张质感背景
-- 便签、拍立得、胶带风格视觉
-- 滚动出现动效
-- 卡片悬停轻微 3D 倾斜
-- 可直接部署到 GitHub Pages
-- 多页面结构：首页、文章列表、详情页、发布页
-- 发布内容会先保存到浏览器本地存储
-- 发布页支持封面图链接和本地图片预览
-- 可选接入 Supabase 作为真正的后端发布方案
+### 首页
+
+![首页预览](./assets/readme/home-page.png)
+
+### 日记详情页
+
+![日记详情页预览](./assets/readme/diary-detail.png)
+
+### 关于页
+
+![关于页预览](./assets/readme/about-page.png)
+
+## 页面
+
+- `index.html`：今日记录台，包含首页总览、最近日记、精选文章、最近相册、本月回顾
+- `diary.html`：日记列表，支持搜索和心情筛选
+- `posts.html`：文章列表，支持搜索和分类筛选
+- `post.html`：文章 / 日记详情页
+- `albums.html`：相册集列表，支持搜索和标签筛选
+- `album.html`：相册集详情页，每组 3-5 张照片
+- `calendar.html`：月历视图，按日期查看记录
+- `review.html`：月度回顾
+- `publish.html`：写记录，支持日记、文章、相册集和草稿
+- `about.html`：关于页面
+
+## 数据
+
+主要数据在 `blog-data.js`：
+
+- `type: "diary"`：日记
+- `type: "post"`：文章
+- `type: "album"`：相册集
+
+发布页新增的内容会保存在当前浏览器的 `localStorage`，适合本地预览和个人使用。
 
 ## 运行
 
-直接打开 `index.html` 即可预览。
+可以直接打开 `index.html`。
 
-如果你想本地起服务，也可以用任意静态服务器，比如：
+也可以启动静态服务：
 
 ```bash
 python -m http.server 8000
 ```
 
-然后访问 `http://localhost:8000`
+然后访问：
 
-## 部署到 GitHub Pages
-
-1. 把这几个文件放在仓库根目录：
-   - `index.html`
-   - `posts.html`
-   - `post.html`
-   - `publish.html`
-   - `about.html`
-   - `blog-config.js`
-   - `blog-data.js`
-   - `backend.js`
-   - `supabase-schema.sql`
-   - `style.css`
-   - `script.js`
-   - `README.md`
-
-## 发布说明
-
-- 这个版本的“发布页”会把新文章保存到当前浏览器的 `localStorage`
-- 发布后会自动跳转到新文章详情页
-- 文章列表页和首页也会同步显示新内容
-- 现在默认还是本地模式，只有配置 Supabase 之后，新发布文章才会同步给所有访客
-
-## 接 Supabase
-
-1. 在 `blog-config.js` 里把 `provider` 改成 `supabase`
-2. 填入 `supabaseUrl` 和 `supabaseAnonKey`
-3. 把 `supabaseBucket` 改成你自己的公开存储桶
-4. 在 Supabase 里创建文章表，字段至少包括：
-   - `id`
-   - `slug`
-   - `title`
-   - `category`
-   - `date`
-   - `excerpt`
-   - `cover`
-   - `featured`
-   - `body`
-   - `notes`
-   - `related`
-   - `created_at`
-5. 之后在发布页提交就会写入 Supabase，并自动把封面图上传到存储桶
-2. 推送到 GitHub
-3. 在仓库设置里打开 GitHub Pages
-4. 选择 `main` 分支和根目录 `/`
-
-## 你可以继续做的事
-
-- 把文章数据改成你自己的内容
-- 替换成自己的照片
-- 再加一个文章列表页或详情页
+```text
+http://localhost:8000
+```
